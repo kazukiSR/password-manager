@@ -2,6 +2,25 @@ from tkinter import *
 from tkinter import messagebox
 import random
 import pyperclip
+import json
+
+
+def findPassword():
+    websiteStr = websiteEntry.get()
+    try:
+        with open("passwords.json", "r") as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        messagebox.showwarning(title="Error", message="No file found.")
+    else:
+        if websiteStr in data:
+            userCreds = data[websiteStr]
+            messagebox.showinfo(title=websiteStr, message=f"Username: {userCreds['username']}"
+                                                          f"\nPassword: {userCreds['password']}"
+                                                          f"\n(Password copied to clipboard)")
+            pyperclip.copy(userCreds['password'])
+        else:
+            messagebox.showwarning(title="Error", message="Website not found")
 
 
 def generatePassword():
@@ -32,18 +51,31 @@ def saveEntry():
     userStr = userEntry.get()
     passwordStr = passwordEntry.get()
 
+    newData = {
+        websiteStr: {
+            "username": userStr,
+            "password": passwordStr,
+        }
+    }
+
     if not websiteStr or not userStr or not passwordStr:
-        messagebox.showerror(title="Error", message="Please don't leave any fields empty!")
+        messagebox.showwarning(title="Error", message="Please don't leave any fields empty!")
     else:
-        confirm = messagebox.askokcancel(title=websiteStr, message=f"Provided details: \nUsername: {userStr} \n"
-                                                                   f"Password: {passwordStr} \nIs this ok to save?")
-        if confirm:
-            with open("passwords.txt", "a") as file:
-                websiteEntry.delete(0, END)
-                userEntry.delete(0, END)
-                passwordEntry.delete(0, END)
-                file.write(f"{websiteStr} | {userStr} | {passwordStr}\n")
-                websiteEntry.focus()
+        try:
+            with open("passwords.json", "r") as file:
+                data = json.load(file)
+                data.update(newData)
+        except FileNotFoundError:
+            with open("passwords.json", "w") as file:
+                json.dump(newData, file, indent=4)
+        else:
+            with open("passwords.json", "w") as file:
+                json.dump(data, file, indent=4)
+        finally:
+            websiteEntry.delete(0, END)
+            userEntry.delete(0, END)
+            passwordEntry.delete(0, END)
+            websiteEntry.focus()
 
 
 window = Tk()
@@ -59,8 +91,7 @@ Label(text="Website:").grid(column=0, row=1, sticky=E)
 Label(text="Email/Username:").grid(column=0, row=2, sticky=E)
 Label(text="Password:").grid(column=0, row=3, sticky=E)
 
-websiteEntry = Entry(width=52)
-# websiteEntry.get()
+websiteEntry = Entry(width=33)
 websiteEntry.grid(column=1, row=1, columnspan=2, sticky=W)
 websiteEntry.focus()
 
@@ -70,8 +101,11 @@ userEntry.grid(column=1, row=2, columnspan=2, sticky=W)
 passwordEntry = Entry(width=33)
 passwordEntry.grid(column=1, row=3, sticky=W)
 
-generatePasswordButton = Button(text="Generate Password", command=generatePassword)
+generatePasswordButton = Button(text="Generate Password", command=generatePassword, width=16)
 generatePasswordButton.grid(column=2, row=3)
+
+searchButton = Button(text="Search", command=findPassword, width=16)
+searchButton.grid(column=2, row=1)
 
 addButton = Button(text="Add", command=saveEntry, width=50)
 addButton.grid(column=1, row=4, columnspan=2)
